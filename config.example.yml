@@ -1,0 +1,35 @@
+platforms:
+  twitch:
+    enabled: true
+    token: "oauth:YOUR_TWITCH_OAUTH_TOKEN_HERE"
+    nick: "YourBotName"
+    channel: "yourchannelname"
+  youtube:
+    enabled: false
+    video_id: "YOUR_YOUTUBE_VIDEO_ID_HERE"
+
+llm:
+  backend: "ollama"  # "ollama", "lmstudio", "lemonade"
+  model: "llama2"
+  base_url: "http://localhost:11434"
+  timeout: 30
+
+personality:
+  preset: "friendly"  # "friendly", "professional", "humorous", "supportive"
+  custom_instructions: "You are a helpful streaming assistant. Keep responses brief and engaging."
+  response_types:
+    - conversational
+    - informational
+    - humorous
+    - supportive
+  response_length: "short"  # "short", "medium", "long"
+
+behavior:
+  response_frequency: 0.3  # 0.0 to 1.0 (30% of messages get responses)
+  min_response_interval: 10  # seconds between responses
+  max_queue_size: 50
+
+dashboard:
+  host: "localhost"
+  port: 5000
+  debug: false
