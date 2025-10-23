@@ -1,35 +1,129 @@
+# StreamChat Assistant Configuration Example
+# Copy this file to config.yml and customize for your setup
+
+# =============================================================================
+# PLATFORM CONFIGURATION
+# =============================================================================
 platforms:
   twitch:
     enabled: true
-    token: "oauth:YOUR_TWITCH_OAUTH_TOKEN_HERE"
-    nick: "YourBotName"
-    channel: "yourchannelname"
+    token: "oauth:YOUR_TWITCH_OAUTH_TOKEN_HERE"  # Get from https://twitchapps.com/tmi/
+    nick: "YourBotName"                          # Your bot's Twitch username
+    channel: "yourchannelname"                   # Channel to join (lowercase, no #)
+    reconnect_attempts: 5
+    reconnect_delay: 30
+    
   youtube:
     enabled: false
-    video_id: "YOUR_YOUTUBE_VIDEO_ID_HERE"
+    video_id: "YOUR_YOUTUBE_VIDEO_ID_HERE"       # From live stream URL
+    reconnect_attempts: 5
+    reconnect_delay: 30
 
+# =============================================================================
+# LLM BACKEND CONFIGURATION
+# =============================================================================
 llm:
-  backend: "ollama"  # "ollama", "lmstudio", "lemonade"
-  model: "llama2"
-  base_url: "http://localhost:11434"
+  backend: "ollama"                              # "ollama", "lmstudio", "lemonade"
+  model: "llama2"                                # Model name available on your backend
+  base_url: "http://localhost:11434"             # Backend API URL
   timeout: 30
+  api_key: "your-api-key-here"                   # For LM Studio/Lemonade AI
+  
+  parameters:
+    temperature: 0.7
+    max_tokens: 150
+    top_p: 0.9
+    frequency_penalty: 0.0
+    presence_penalty: 0.0
 
+# =============================================================================
+# PERSONALITY CONFIGURATION
+# =============================================================================
 personality:
-  preset: "friendly"  # "friendly", "professional", "humorous", "supportive"
+  preset: "friendly"                             # "friendly", "professional", "humorous", "supportive"
   custom_instructions: "You are a helpful streaming assistant. Keep responses brief and engaging."
   response_types:
     - conversational
     - informational
     - humorous
     - supportive
-  response_length: "short"  # "short", "medium", "long"
+  response_length: "short"                       # "short", "medium", "long"
 
+# =============================================================================
+# BEHAVIOR CONFIGURATION
+# =============================================================================
 behavior:
-  response_frequency: 0.3  # 0.0 to 1.0 (30% of messages get responses)
-  min_response_interval: 10  # seconds between responses
+  response_frequency: 0.3                        # 0.0-1.0 (30% of messages get responses)
+  min_response_interval: 10                      # Seconds between responses
   max_queue_size: 50
+  
+  filters:
+    min_message_length: 3
+    max_message_length: 500
+    skip_spam_like: true
+    ignored_users:
+      - "nightbot"
+      - "streamelements"
+      - "streamlabs"
+    ignored_phrases:
+      - "!commands"
+      - "!help"
+  
+  context:
+    recent_messages_count: 5
+    remember_users: true
+    max_user_history: 100
 
+# =============================================================================
+# WEB DASHBOARD CONFIGURATION
+# =============================================================================
 dashboard:
-  host: "localhost"
+  host: "localhost"                              # Use "0.0.0.0" for external access
   port: 5000
   debug: false
+  
+  auth:
+    enabled: false
+    username: "admin"
+    password: "streamchat123"
+  
+  updates:
+    status_interval: 5
+    max_log_entries: 1000
+    max_chat_history: 500
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logging:
+  level: "INFO"                                  # DEBUG, INFO, WARNING, ERROR
+  
+  file:
+    enabled: true
+    path: "streamchat.log"
+    max_size_mb: 10
+    backup_count: 5
+  
+  console:
+    enabled: true
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# =============================================================================
+# ADVANCED SETTINGS
+# =============================================================================
+advanced:
+  performance:
+    worker_threads: 4
+    connection_pool_size: 10
+    enable_metrics: false
+  
+  error_handling:
+    max_consecutive_errors: 5
+    retry_attempts: 3
+    retry_delay: 5
+    auto_recovery: true
+  
+  development:
+    dev_mode: false
+    mock_responses: false
+    verbose_logging: false

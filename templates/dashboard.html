@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM StreamChat Assistant Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background-color: #2d2d2d;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .panel h2 {
+            margin-bottom: 15px;
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 5px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background-color: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+        
+        .status-disconnected {
+            background-color: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+        
+        .bot-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #45a049;
+        }
+        
+        .btn-danger {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #da190b;
+        }
+        
+        .btn-warning {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e68900;
+        }
+        
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        
+        .log-timestamp {
+            color: #888;
+        }
+        
+        .log-level-info {
+            color: #4CAF50;
+        }
+        
+        .log-level-warning {
+            color: #ff9800;
+        }
+        
+        .log-level-error {
+            color: #f44336;
+        }
+        
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            background-color: #2d2d2d;
+        }
+        
+        .chat-platform {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .chat-username {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .chat-content {
+            margin-top: 5px;
+        }
+        
+        .response-message {
+            background-color: #3d2d4d;
+            border-left: 4px solid #764ba2;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        select.form-control {
+            cursor: pointer;
+        }
+        
+        .prompt-test {
+            margin-top: 20px;
+        }
+        
+        .prompt-response {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            min-height: 60px;
+        }
+        
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .system-health {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .health-item {
+            text-align: center;
+        }
+        
+        .health-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification.success {
+            background-color: #4CAF50;
+        }
+        
+        .notification.error {
+            background-color: #f44336;
+        }
+        
+        .notification.info {
+            background-color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 LLM StreamChat Assistant</h1>
+            <p>Real-time Dashboard & Control Center</p>
+        </div>
+        
+        <div class="dashboard-grid">
+            <!-- Bot Status & Controls -->
+            <div class="panel">
+                <h2>🎮 Bot Status & Controls</h2>
+                
+                <div class="system-health">
+                    <div class="health-item">
+                        <div class="health-value" id="uptime">00:00:00</div>
+                        <div>Uptime</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value" id="llm-status">●</div>
+                        <div id="llm-backend-type">LLM Backend</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value" id="memory-usage">0 MB</div>
+                        <div>Memory</div>
+                    </div>
+                    <div class="health-item">
+                        <div class="health-value" id="connections-count">0</div>
+                        <div>Connections</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3>
+                        <span class="status-indicator" id="twitch-status"></span>
+                        Twitch Bot
+                    </h3>
+                    <div class="bot-controls">
+                        <button class="btn btn-primary" onclick="controlBot('start', 'twitch')">Start</button>
+                        <button class="btn btn-danger" onclick="controlBot('stop', 'twitch')">Stop</button>
+                        <button class="btn btn-warning" onclick="controlBot('restart', 'twitch')">Restart</button>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3>
+                        <span class="status-indicator" id="youtube-status"></span>
+                        YouTube Bot
+                    </h3>
+                    <div class="bot-controls">
+                        <button class="btn btn-primary" onclick="controlBot('start', 'youtube')">Start</button>
+                        <button class="btn btn-danger" onclick="controlBot('stop', 'youtube')">Stop</button>
+                        <button class="btn btn-warning" onclick="controlBot('restart', 'youtube')">Restart</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Both Platforms</h3>
+                    <div class="bot-controls">
+                        <button class="btn btn-primary" onclick="controlBot('start', 'both')">Start All</button>
+                        <button class="btn btn-danger" onclick="controlBot('stop', 'both')">Stop All</button>
+                        <button class="btn btn-warning" onclick="controlBot('restart', 'both')">Restart All</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuration -->
+            <div class="panel">
+                <h2>⚙️ Configuration</h2>
+                
+                <!-- Platform Settings -->
+                <h3 style="color: #4CAF50; margin-bottom: 10px;">Platform Settings</h3>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="twitch-enabled" onchange="updateConfig()">
+                        Enable Twitch Bot
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="youtube-enabled" onchange="updateConfig()">
+                        Enable YouTube Bot
+                    </label>
+                </div>
+                
+                <!-- Personality Settings -->
+                <h3 style="color: #4CAF50; margin-bottom: 10px; margin-top: 20px;">Personality</h3>
+                
+                <div class="form-group">
+                    <label for="personality-preset">Personality Preset:</label>
+                    <select id="personality-preset" class="form-control" onchange="updateConfig()">
+                        <option value="friendly">Friendly</option>
+                        <option value="professional">Professional</option>
+                        <option value="humorous">Humorous</option>
+                        <option value="supportive">Supportive</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="response-length">Response Length:</label>
+                    <select id="response-length" class="form-control" onchange="updateConfig()">
+                        <option value="short">Short (1-2 sentences)</option>
+                        <option value="medium">Medium (2-4 sentences)</option>
+                        <option value="long">Long (3-6 sentences)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="custom-instructions">Custom Instructions:</label>
+                    <textarea id="custom-instructions" class="form-control" rows="3" 
+                              onchange="updateConfig()" placeholder="Additional personality instructions..."></textarea>
+                </div>
+                
+                <!-- Behavior Settings -->
+                <h3 style="color: #4CAF50; margin-bottom: 10px; margin-top: 20px;">Behavior</h3>
+                
+                <div class="form-group">
+                    <label for="response-frequency">Response Frequency:</label>
+                    <input type="range" id="response-frequency" class="form-control" 
+                           min="0" max="1" step="0.1" onchange="updateConfig()">
+                    <small id="frequency-value">30%</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="min-response-interval">Min Response Interval (seconds):</label>
+                    <input type="number" id="min-response-interval" class="form-control" 
+                           min="1" max="300" onchange="updateConfig()">
+                </div>
+                
+                <!-- LLM Settings -->
+                <h3 style="color: #4CAF50; margin-bottom: 10px; margin-top: 20px;">LLM Backend</h3>
+                
+                <div class="form-group">
+                    <label for="llm-backend">Backend Type:</label>
+                    <select id="llm-backend" class="form-control" onchange="updateConfig()">
+                        <option value="ollama">Ollama</option>
+                        <option value="lmstudio">LM Studio</option>
+                        <option value="lemonade">Lemonade AI</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="llm-model">Model Name:</label>
+                    <input type="text" id="llm-model" class="form-control" 
+                           onchange="updateConfig()" placeholder="e.g., llama2, gpt-3.5-turbo">
+                </div>
+                
+                <div class="form-group">
+                    <label for="llm-base-url">Base URL:</label>
+                    <input type="text" id="llm-base-url" class="form-control" 
+                           onchange="updateConfig()" placeholder="e.g., http://localhost:11434">
+                </div>
+                
+                <div class="form-group">
+                    <label for="llm-timeout">Timeout (seconds):</label>
+                    <input type="number" id="llm-timeout" class="form-control" 
+                           min="5" max="120" onchange="updateConfig()">
+                </div>
+                
+                <!-- Save/Reset Buttons -->
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="saveConfiguration()">Save Configuration</button>
+                    <button class="btn btn-warning" onclick="resetConfiguration()">Reset to Defaults</button>
+                </div>
+                
+                <!-- Configuration Status -->
+                <div id="config-status" style="margin-top: 10px; padding: 10px; border-radius: 5px; display: none;">
+                    <span id="config-status-text"></span>
+                </div>
+            </div>
+            
+            <!-- Live Chat Monitor -->
+            <div class="panel">
+                <h2>💬 Live Chat Monitor</h2>
+                <div class="chat-container" id="chat-container">
+                    <div class="chat-message">
+                        <div><span class="chat-platform">[System]</span> Waiting for chat messages...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Statistics -->
+            <div class="panel">
+                <h2>📊 System Statistics</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <strong>Chat Messages:</strong>
+                        <div id="stats-messages" style="font-size: 1.2em; color: #4CAF50;">0</div>
+                    </div>
+                    <div>
+                        <strong>Bot Responses:</strong>
+                        <div id="stats-responses" style="font-size: 1.2em; color: #764ba2;">0</div>
+                    </div>
+                    <div>
+                        <strong>CPU Usage:</strong>
+                        <div id="stats-cpu" style="font-size: 1.2em; color: #ff9800;">0%</div>
+                    </div>
+                    <div>
+                        <strong>Queue Size:</strong>
+                        <div id="stats-queue" style="font-size: 1.2em; color: #2196F3;">0</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <strong>Overall Status:</strong>
+                    <div id="overall-status" style="font-size: 1.1em; font-weight: bold; margin-top: 5px;">Initializing...</div>
+                </div>
+            </div>
+            
+            <!-- System Logs -->
+            <div class="panel">
+                <h2>📋 System Logs</h2>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry">
+                        <span class="log-timestamp">[00:00:00]</span>
+                        <span class="log-level-info">[INFO]</span>
+                        Dashboard initialized
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Prompt Testing -->
+            <div class="panel full-width">
+                <h2>🧪 Prompt Testing</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Test Input -->
+                    <div>
+                        <div class="form-group">
+                            <label for="test-prompt">Test Message:</label>
+                            <textarea id="test-prompt" class="form-control" rows="4" 
+                                      placeholder="Enter a test chat message to see how the AI would respond..."></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="test-username">Simulated Username:</label>
+                            <input type="text" id="test-username" class="form-control" 
+                                   placeholder="TestUser" value="TestUser">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="test-platform">Platform:</label>
+                            <select id="test-platform" class="form-control">
+                                <option value="twitch">Twitch</option>
+                                <option value="youtube">YouTube</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="test-mode-enabled" checked>
+                                Test Mode (don't send to actual chat)
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="testPrompt()">Test Response</button>
+                            <button class="btn btn-warning" onclick="clearTestHistory()">Clear History</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Test Results -->
+                    <div>
+                        <h3>Response Preview</h3>
+                        <div class="prompt-response" id="prompt-response">
+                            Response will appear here...
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <h4>Response Analysis</h4>
+                            <div id="response-analysis" style="font-size: 0.9em; color: #ccc;">
+                                <div>Length: <span id="analysis-length">-</span> characters</div>
+                                <div>Words: <span id="analysis-words">-</span></div>
+                                <div>Sentences: <span id="analysis-sentences">-</span></div>
+                                <div>Tone: <span id="analysis-tone">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Test History -->
+                <div style="margin-top: 20px;">
+                    <h3>Test History</h3>
+                    <div id="test-history" style="max-height: 200px; overflow-y: auto; background-color: #1a1a1a; border: 1px solid #444; border-radius: 5px; padding: 10px;">
+                        <div style="color: #888; font-style: italic;">No tests performed yet...</div>
+                    </div>
+                </div>
+                
+                <!-- Quick Test Templates -->
+                <div style="margin-top: 20px;">
+                    <h3>Quick Test Templates</h3>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="btn" style="background-color: #333; color: white;" onclick="loadTestTemplate('greeting')">Greeting</button>
+                        <button class="btn" style="background-color: #333; color: white;" onclick="loadTestTemplate('question')">Question</button>
+                        <button class="btn" style="background-color: #333; color: white;" onclick="loadTestTemplate('compliment')">Compliment</button>
+                        <button class="btn" style="background-color: #333; color: white;" onclick="loadTestTemplate('help')">Help Request</button>
+                        <button class="btn" style="background-color: #333; color: white;" onclick="loadTestTemplate('random')">Random Chat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+    
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        // Current configuration
+        let currentConfig = {{ config | tojson }};
+        
+        // Statistics counters
+        let messageCount = 0;
+        let responseCount = 0;
+        
+        // Test history
+        let testHistory = [];
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfiguration();
+            updateBotStatus({{ bot_status | tojson }});
+        });
+        
+        // Socket.IO event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            showNotification('Connected to dashboard', 'success');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+            showNotification('Disconnected from dashboard', 'error');
+        });
+        
+        socket.on('status_update', function(data) {
+            updateBotStatus(data.bot_status);
+            updateSystemHealth(data.system_health);
+        });
+        
+        socket.on('new_log', function(logEntry) {
+            addLogEntry(logEntry);
+        });
+        
+        socket.on('log_history', function(logs) {
+            const container = document.getElementById('log-container');
+            container.innerHTML = '';
+            logs.forEach(log => addLogEntry(log));
+        });
+        
+        socket.on('new_chat_message', function(message) {
+            addChatMessage(message);
+        });
+        
+        socket.on('chat_history', function(messages) {
+            const container = document.getElementById('chat-container');
+            container.innerHTML = '';
+            messages.forEach(msg => addChatMessage(msg));
+        });
+        
+        socket.on('new_response', function(response) {
+            addBotResponse(response);
+        });
+        
+        socket.on('config_updated', function(config) {
+            currentConfig = config;
+            loadConfiguration();
+            showNotification('Configuration updated', 'success');
+        });
+        
+        socket.on('bot_control_result', function(result) {
+            if (result.success) {
+                showNotification(result.message, 'success');
+            } else {
+                showNotification(result.error || 'Bot control failed', 'error');
+            }
+        });
+        
+        socket.on('prompt_test_result', function(result) {
+            const responseDiv = document.getElementById('prompt-response');
+            if (result.success) {
+                responseDiv.textContent = result.response;
+                responseDiv.style.color = '#4CAF50';
+                
+                // Analyze the response
+                analyzeResponse(result.response);
+                
+                // Add to test history
+                const testEntry = {
+                    timestamp: new Date(),
+                    prompt: result.prompt,
+                    username: document.getElementById('test-username').value || 'TestUser',
+                    platform: document.getElementById('test-platform').value,
+                    testMode: document.getElementById('test-mode-enabled').checked,
+                    response: result.response
+                };
+                
+                addToTestHistory(testEntry, result.response);
+                
+            } else {
+                responseDiv.textContent = 'Error: ' + result.error;
+                responseDiv.style.color = '#f44336';
+                
+                // Clear analysis on error
+                document.getElementById('analysis-length').textContent = '-';
+                document.getElementById('analysis-words').textContent = '-';
+                document.getElementById('analysis-sentences').textContent = '-';
+                document.getElementById('analysis-tone').textContent = '-';
+            }
+        });
+        
+        // Dashboard functions
+        function loadConfiguration() {
+            // Platform settings
+            document.getElementById('twitch-enabled').checked = currentConfig.platforms?.twitch?.enabled || false;
+            document.getElementById('youtube-enabled').checked = currentConfig.platforms?.youtube?.enabled || false;
+            
+            // Personality settings
+            document.getElementById('personality-preset').value = currentConfig.personality?.preset || 'friendly';
+            document.getElementById('response-length').value = currentConfig.personality?.response_length || 'short';
+            document.getElementById('custom-instructions').value = currentConfig.personality?.custom_instructions || '';
+            
+            // Behavior settings
+            document.getElementById('response-frequency').value = currentConfig.behavior?.response_frequency || 0.3;
+            document.getElementById('frequency-value').textContent = Math.round((currentConfig.behavior?.response_frequency || 0.3) * 100) + '%';
+            document.getElementById('min-response-interval').value = currentConfig.behavior?.min_response_interval || 10;
+            
+            // LLM settings
+            document.getElementById('llm-backend').value = currentConfig.llm?.backend || 'ollama';
+            document.getElementById('llm-model').value = currentConfig.llm?.model || '';
+            document.getElementById('llm-base-url').value = currentConfig.llm?.base_url || '';
+            document.getElementById('llm-timeout').value = currentConfig.llm?.timeout || 30;
+        }
+        
+        function updateConfig() {
+            const updatedConfig = {
+                ...currentConfig,
+                platforms: {
+                    ...currentConfig.platforms,
+                    twitch: {
+                        ...currentConfig.platforms?.twitch,
+                        enabled: document.getElementById('twitch-enabled').checked
+                    },
+                    youtube: {
+                        ...currentConfig.platforms?.youtube,
+                        enabled: document.getElementById('youtube-enabled').checked
+                    }
+                },
+                personality: {
+                    ...currentConfig.personality,
+                    preset: document.getElementById('personality-preset').value,
+                    response_length: document.getElementById('response-length').value,
+                    custom_instructions: document.getElementById('custom-instructions').value
+                },
+                behavior: {
+                    ...currentConfig.behavior,
+                    response_frequency: parseFloat(document.getElementById('response-frequency').value),
+                    min_response_interval: parseInt(document.getElementById('min-response-interval').value)
+                },
+                llm: {
+                    ...currentConfig.llm,
+                    backend: document.getElementById('llm-backend').value,
+                    model: document.getElementById('llm-model').value,
+                    base_url: document.getElementById('llm-base-url').value,
+                    timeout: parseInt(document.getElementById('llm-timeout').value)
+                }
+            };
+            
+            // Update frequency display
+            document.getElementById('frequency-value').textContent = 
+                Math.round(updatedConfig.behavior.response_frequency * 100) + '%';
+            
+            // Validate configuration
+            const validation = validateConfiguration(updatedConfig);
+            if (!validation.valid) {
+                showConfigStatus('Configuration validation failed: ' + validation.errors.join(', '), 'error');
+                return;
+            }
+            
+            // Send update to server
+            socket.emit('config_update', updatedConfig);
+        }
+        
+        function saveConfiguration() {
+            updateConfig();
+            showNotification('Configuration saved', 'success');
+        }
+        
+        function resetConfiguration() {
+            if (confirm('Are you sure you want to reset configuration to defaults? This will reload the page.')) {
+                fetch('/api/config/reset', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            showNotification('Failed to reset configuration: ' + data.error, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showNotification('Error resetting configuration: ' + error, 'error');
+                    });
+            }
+        }
+        
+        function validateConfiguration(config) {
+            const errors = [];
+            
+            // Validate LLM settings
+            if (!config.llm?.backend) {
+                errors.push('LLM backend is required');
+            }
+            
+            if (!config.llm?.model) {
+                errors.push('LLM model name is required');
+            }
+            
+            if (!config.llm?.base_url) {
+                errors.push('LLM base URL is required');
+            } else {
+                try {
+                    new URL(config.llm.base_url);
+                } catch (e) {
+                    errors.push('LLM base URL must be a valid URL');
+                }
+            }
+            
+            if (config.llm?.timeout && (config.llm.timeout < 5 || config.llm.timeout > 120)) {
+                errors.push('LLM timeout must be between 5 and 120 seconds');
+            }
+            
+            // Validate behavior settings
+            if (config.behavior?.response_frequency < 0 || config.behavior?.response_frequency > 1) {
+                errors.push('Response frequency must be between 0 and 1');
+            }
+            
+            if (config.behavior?.min_response_interval < 1) {
+                errors.push('Minimum response interval must be at least 1 second');
+            }
+            
+            // Validate platform settings
+            if (!config.platforms?.twitch?.enabled && !config.platforms?.youtube?.enabled) {
+                errors.push('At least one platform must be enabled');
+            }
+            
+            return {
+                valid: errors.length === 0,
+                errors: errors
+            };
+        }
+        
+        function showConfigStatus(message, type) {
+            const statusDiv = document.getElementById('config-status');
+            const statusText = document.getElementById('config-status-text');
+            
+            statusText.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'error') {
+                statusDiv.style.backgroundColor = '#f44336';
+                statusDiv.style.color = 'white';
+            } else if (type === 'success') {
+                statusDiv.style.backgroundColor = '#4CAF50';
+                statusDiv.style.color = 'white';
+            } else {
+                statusDiv.style.backgroundColor = '#ff9800';
+                statusDiv.style.color = 'white';
+            }
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        function controlBot(action, platform) {
+            socket.emit('bot_control', {
+                action: action,
+                platform: platform
+            });
+        }
+        
+        function testPrompt() {
+            const prompt = document.getElementById('test-prompt').value;
+            const username = document.getElementById('test-username').value || 'TestUser';
+            const platform = document.getElementById('test-platform').value;
+            const testMode = document.getElementById('test-mode-enabled').checked;
+            
+            if (!prompt.trim()) {
+                showNotification('Please enter a prompt to test', 'error');
+                return;
+            }
+            
+            // Add to test history
+            const testEntry = {
+                timestamp: new Date(),
+                prompt: prompt,
+                username: username,
+                platform: platform,
+                testMode: testMode
+            };
+            
+            socket.emit('test_prompt', {
+                prompt: prompt,
+                username: username,
+                platform: platform,
+                testMode: testMode,
+                personality: currentConfig.personality
+            });
+            
+            document.getElementById('prompt-response').textContent = 'Testing...';
+            document.getElementById('prompt-response').style.color = '#ccc';
+            
+            // Clear analysis
+            document.getElementById('analysis-length').textContent = '-';
+            document.getElementById('analysis-words').textContent = '-';
+            document.getElementById('analysis-sentences').textContent = '-';
+            document.getElementById('analysis-tone').textContent = '-';
+        }
+        
+        function clearTestHistory() {
+            testHistory = [];
+            document.getElementById('test-history').innerHTML = 
+                '<div style="color: #888; font-style: italic;">No tests performed yet...</div>';
+        }
+        
+        function loadTestTemplate(type) {
+            const templates = {
+                greeting: "Hello! How are you doing today?",
+                question: "What's your favorite game to stream?",
+                compliment: "Great stream today, really enjoying the content!",
+                help: "Can you help me understand this part of the game?",
+                random: "This music is really good, what's the name of this song?"
+            };
+            
+            const template = templates[type];
+            if (template) {
+                document.getElementById('test-prompt').value = template;
+            }
+        }
+        
+        function analyzeResponse(response) {
+            const length = response.length;
+            const words = response.split(/\s+/).filter(word => word.length > 0).length;
+            const sentences = response.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
+            
+            // Simple tone analysis based on keywords
+            let tone = 'neutral';
+            const lowerResponse = response.toLowerCase();
+            
+            if (lowerResponse.includes('!') || lowerResponse.includes('awesome') || lowerResponse.includes('great')) {
+                tone = 'enthusiastic';
+            } else if (lowerResponse.includes('?')) {
+                tone = 'inquisitive';
+            } else if (lowerResponse.includes('sorry') || lowerResponse.includes('unfortunately')) {
+                tone = 'apologetic';
+            } else if (lowerResponse.includes('haha') || lowerResponse.includes('lol') || lowerResponse.includes('funny')) {
+                tone = 'humorous';
+            }
+            
+            document.getElementById('analysis-length').textContent = length;
+            document.getElementById('analysis-words').textContent = words;
+            document.getElementById('analysis-sentences').textContent = sentences;
+            document.getElementById('analysis-tone').textContent = tone;
+        }
+        
+        function addToTestHistory(testEntry, response) {
+            testHistory.unshift({ ...testEntry, response: response });
+            
+            // Keep only last 10 tests
+            if (testHistory.length > 10) {
+                testHistory = testHistory.slice(0, 10);
+            }
+            
+            updateTestHistoryDisplay();
+        }
+        
+        function updateTestHistoryDisplay() {
+            const container = document.getElementById('test-history');
+            
+            if (testHistory.length === 0) {
+                container.innerHTML = '<div style="color: #888; font-style: italic;">No tests performed yet...</div>';
+                return;
+            }
+            
+            container.innerHTML = testHistory.map(test => {
+                const timestamp = test.timestamp.toLocaleTimeString();
+                return `
+                    <div style="margin-bottom: 10px; padding: 8px; background-color: #2d2d2d; border-radius: 5px;">
+                        <div style="font-size: 0.9em; color: #888;">
+                            [${timestamp}] ${test.username} on ${test.platform.toUpperCase()}
+                            ${test.testMode ? ' (TEST MODE)' : ''}
+                        </div>
+                        <div style="margin: 5px 0; color: #4CAF50;">
+                            <strong>Input:</strong> ${test.prompt}
+                        </div>
+                        <div style="color: #764ba2;">
+                            <strong>Response:</strong> ${test.response || 'No response yet...'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateBotStatus(botStatus) {
+            // Update Twitch status
+            const twitchIndicator = document.getElementById('twitch-status');
+            twitchIndicator.className = 'status-indicator ' + 
+                (botStatus.twitch?.connected ? 'status-connected' : 'status-disconnected');
+            
+            // Update YouTube status
+            const youtubeIndicator = document.getElementById('youtube-status');
+            youtubeIndicator.className = 'status-indicator ' + 
+                (botStatus.youtube?.connected ? 'status-connected' : 'status-disconnected');
+        }
+        
+        function updateSystemHealth(health) {
+            if (health) {
+                // Update uptime
+                document.getElementById('uptime').textContent = health.uptime || '00:00:00';
+                
+                // Update LLM status
+                const llmStatus = document.getElementById('llm-status');
+                const llmBackendType = document.getElementById('llm-backend-type');
+                
+                if (health.llm_backend === 'connected') {
+                    llmStatus.textContent = '●';
+                    llmStatus.style.color = '#4CAF50';
+                    llmBackendType.textContent = health.llm_backend_type || 'LLM Backend';
+                } else if (health.llm_backend === 'error') {
+                    llmStatus.textContent = '●';
+                    llmStatus.style.color = '#f44336';
+                    llmBackendType.textContent = 'LLM Error';
+                } else {
+                    llmStatus.textContent = '○';
+                    llmStatus.style.color = '#888';
+                    llmBackendType.textContent = 'LLM Offline';
+                }
+                
+                // Update memory usage
+                const memoryUsage = document.getElementById('memory-usage');
+                if (health.memory_usage_mb !== undefined) {
+                    memoryUsage.textContent = health.memory_usage_mb + ' MB';
+                    
+                    // Color code based on usage
+                    if (health.memory_status === 'high') {
+                        memoryUsage.style.color = '#f44336';
+                    } else if (health.memory_status === 'normal') {
+                        memoryUsage.style.color = '#4CAF50';
+                    } else {
+                        memoryUsage.style.color = '#ff9800';
+                    }
+                } else {
+                    memoryUsage.textContent = 'Unknown';
+                    memoryUsage.style.color = '#888';
+                }
+                
+                // Update connections count
+                const connectionsCount = document.getElementById('connections-count');
+                connectionsCount.textContent = health.total_connections || '0';
+                connectionsCount.style.color = health.total_connections > 0 ? '#4CAF50' : '#f44336';
+                
+                // Update system statistics
+                if (health.cpu_percent !== undefined) {
+                    document.getElementById('stats-cpu').textContent = health.cpu_percent.toFixed(1) + '%';
+                }
+                
+                if (health.message_queue_size !== undefined) {
+                    document.getElementById('stats-queue').textContent = health.message_queue_size;
+                }
+                
+                // Update overall status
+                const overallStatus = document.getElementById('overall-status');
+                if (health.overall_status) {
+                    overallStatus.textContent = health.overall_status.charAt(0).toUpperCase() + health.overall_status.slice(1);
+                    
+                    // Color code the status
+                    if (health.overall_status === 'healthy') {
+                        overallStatus.style.color = '#4CAF50';
+                    } else if (health.overall_status === 'error') {
+                        overallStatus.style.color = '#f44336';
+                    } else {
+                        overallStatus.style.color = '#ff9800';
+                    }
+                }
+                
+                // Show critical issues if any
+                if (health.critical_issues && health.critical_issues.length > 0) {
+                    showNotification('System issues detected: ' + health.critical_issues.join(', '), 'error');
+                }
+            }
+        }
+        
+        function addLogEntry(logEntry) {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const timestamp = new Date(logEntry.timestamp).toLocaleTimeString();
+            entry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level-${logEntry.level}">[${logEntry.level.toUpperCase()}]</span>
+                ${logEntry.message}
+            `;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            
+            // Keep only last 100 entries
+            while (container.children.length > 100) {
+                container.removeChild(container.firstChild);
+            }
+        }
+        
+        function addChatMessage(message) {
+            const container = document.getElementById('chat-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message';
+            
+            const timestamp = new Date(message.timestamp).toLocaleTimeString();
+            msgDiv.innerHTML = `
+                <div>
+                    <span class="chat-platform">[${message.platform.toUpperCase()}]</span>
+                    <span class="chat-username">${message.username}</span>
+                    <small style="color: #888; margin-left: 10px;">${timestamp}</small>
+                </div>
+                <div class="chat-content">${message.content}</div>
+            `;
+            
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Update message counter
+            messageCount++;
+            document.getElementById('stats-messages').textContent = messageCount;
+            
+            // Keep only last 50 messages
+            while (container.children.length > 50) {
+                container.removeChild(container.firstChild);
+            }
+        }
+        
+        function addBotResponse(response) {
+            const container = document.getElementById('chat-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'chat-message response-message';
+            
+            const timestamp = new Date(response.timestamp).toLocaleTimeString();
+            msgDiv.innerHTML = `
+                <div>
+                    <span class="chat-platform">[BOT → ${response.platform.toUpperCase()}]</span>
+                    <span style="color: #764ba2;">Assistant</span>
+                    <small style="color: #888; margin-left: 10px;">${timestamp}</small>
+                </div>
+                <div class="chat-content">
+                    <small style="color: #888;">Replying to ${response.original_user}: "${response.original_message}"</small><br>
+                    ${response.response}
+                </div>
+            `;
+            
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            
+            // Update response counter
+            responseCount++;
+            document.getElementById('stats-responses').textContent = responseCount;
+        }
+        
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Update uptime every second
+        setInterval(() => {
+            // This would be updated with actual uptime from server
+            const now = new Date();
+            document.getElementById('uptime').textContent = now.toLocaleTimeString();
+        }, 1000);
+    </script>
+</body>
+</html>
